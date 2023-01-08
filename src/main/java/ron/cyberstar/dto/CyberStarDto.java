@@ -7,7 +7,8 @@ import lombok.Data;
 @Builder
 public class CyberStarDto {
   private String loginId;
+  private String name;
   private long followerCount;
-  private long subscribeCount;
+  private long followingCount;
   private long friendCount;
 }

@@ -9,6 +9,8 @@ import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.JoinTable;
 import javax.persistence.OneToMany;
+import javax.persistence.OneToOne;
+import javax.persistence.Version;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -18,24 +20,13 @@ import lombok.Setter;
 public class Cyberstar {
 
   @Id
-  @Column(name = "CyberstarId")
+  @Column(name = "cyberstar_id")
   private long id;
   private String loginId;
-  private Long followerCount;
-  private Long subscribeCount;
-  private Long friendCount;
+  private String name;
 
-  @OneToMany(fetch = FetchType.LAZY)
-  @JoinTable(name = "Follower", joinColumns = {@JoinColumn(table = "Follower", name = "CyberstarId", referencedColumnName = "CyberstarId")})
-  private List<Cyberstar> followers;
-
-  @OneToMany(fetch = FetchType.LAZY)
-  @JoinTable(name = "Friend", joinColumns = {@JoinColumn(table = "Follower", name = "CyberstarId", referencedColumnName = "CyberstarId")})
-  private List<Cyberstar> friends;
-
-  @OneToMany(fetch = FetchType.LAZY)
-  @JoinTable(name = "Subscribed", joinColumns = {@JoinColumn(table = "Follower", name = "CyberstarId", referencedColumnName = "CyberstarId")})
-  private List<Cyberstar> subscribed;
-
+  @OneToOne
+  @JoinColumn(name = "cyberstar_id", referencedColumnName = "cyberstar_id")
+  private Relationship relationship;
 
 }

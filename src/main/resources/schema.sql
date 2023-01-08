@@ -1,26 +1,24 @@
+set schema PUBLIC;
 
 create table "cyberstar"
 (
     "cyberstar_id"             BIGINT auto_increment,
     "login_id"        CHARACTER VARYING(10) not null,
     "name"        CHARACTER VARYING(20) not null,
-    "follower_count"  BIGINT default 0,
-    "subscribe_count" BIGINT default 0,
-    "friend_count"    BIGINT default 0,
     constraint cyberstarS_PK
         primary key ("cyberstar_id")
 );
 
-create table "follower"
+create table "relationship"
 (
-    "id"          BIGINT auto_increment,
-    "cyberstar_id" BIGINT not null,
-    "follower_id"  BIGINT not null,
-    constraint FOLLOWER_PK
-        primary key ("id"),
-    constraint FOLLOWER_cyberstar__id_FK
-        foreign key ("cyberstar_id") references "cyberstar",
-    constraint FOLLOWER_cyberstar__id_FK_2
+    "cyberstar_id"   BIGINT not null,
+    "follower_count"  BIGINT default 0,
+    "following_count" BIGINT default 0,
+    "friend_count"    BIGINT default 0,
+    "version"   BIGINT not null default 0,
+    constraint relationship_PK
+        primary key ("cyberstar_id"),
+    constraint relationship_cyberstar_id_FK
         foreign key ("cyberstar_id") references "cyberstar"
 );
 
@@ -31,22 +29,24 @@ create table "friend"
     "friend_id"    BIGINT not null,
     constraint FRIEND_PK
         primary key ("id"),
-    constraint FRIEND_cyberstar__id_FK
+    constraint FRIEND_cyberstar_id_FK
         foreign key ("cyberstar_id") references "cyberstar",
-    constraint FRIEND_cyberstar__id_FK_2
+    constraint FRIEND_cyberstar_id_FK_2
         foreign key ("friend_id") references "cyberstar"
 );
 
-create table "subscribed"
+create table "subscribe"
 (
     "id"          BIGINT auto_increment,
     "cyberstar_id" BIGINT not null,
-    "subscribed_id"    BIGINT not null,
-    constraint SUBSCRIBED_PK
+    "subscribe_id"    BIGINT not null,
+    constraint SUBSCRIBE_PK
         primary key ("id"),
-    constraint SUBSCRIBED_CYBERSTAR__ID_FK
+    constraint SUBSCRIBE_CYBERSTAR_ID_FK
         foreign key ("cyberstar_id") references "cyberstar",
-    constraint SUBSCRIBED_CYBERSTAR__ID_FK_2
-        foreign key ("subscribed_id") references "cyberstar"
+    constraint SUBSCRIBE_CYBERSTAR_ID_FK_2
+        foreign key ("subscribe_id") references "cyberstar",
+    constraint SUBSCRIBE_UNIQUE
+        unique ("cyberstar_id", "subscribe_id")
 );
 

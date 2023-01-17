@@ -4,7 +4,6 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import javassist.NotFoundException;
 import javax.persistence.LockModeType;
-import javax.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -13,6 +12,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
 import ron.cyberstar.dto.CyberStarDto;
 import ron.cyberstar.entity.Cyberstar;
 import ron.cyberstar.entity.Relationship;
@@ -34,6 +35,7 @@ public class CyberstarServiceImpl implements CyberstarService {
    * @return
    */
   @Override
+  @Transactional(isolation = Isolation.READ_COMMITTED)
   public CyberStarDto getInfo(String loginId) {
     Optional<Cyberstar> opt = cyberstarRepository.findByLoginId(loginId);
     if (opt.isEmpty()) {
@@ -56,7 +58,7 @@ public class CyberstarServiceImpl implements CyberstarService {
    * @return
    */
   @Override
-  @Transactional
+  @Transactional(isolation = Isolation.READ_COMMITTED)
   @Lock(LockModeType.OPTIMISTIC_FORCE_INCREMENT)
   public void subscribe(long currenUserId, String loginId)
       throws NotFoundException, DuplicateKeyException {
@@ -117,7 +119,7 @@ public class CyberstarServiceImpl implements CyberstarService {
    * @return
    */
   @Override
-  @Transactional
+  @Transactional(isolation = Isolation.READ_COMMITTED)
   @Lock(LockModeType.OPTIMISTIC_FORCE_INCREMENT)
   public void unsubscribe(long currenUserId, String loginId) throws NotFoundException {
     Optional<Cyberstar> starOpt;
@@ -168,6 +170,7 @@ public class CyberstarServiceImpl implements CyberstarService {
    * @return
    */
   @Override
+  @Transactional(isolation = Isolation.READ_COMMITTED)
   @Lock(LockModeType.READ)
   public PagedResult getFollowers(String loginId, int index, int pageSize) {
     PageRequest pageRequest = PageRequest.of(index, pageSize);
@@ -189,6 +192,7 @@ public class CyberstarServiceImpl implements CyberstarService {
    * @return
    */
   @Override
+  @Transactional(isolation = Isolation.READ_COMMITTED)
   @Lock(LockModeType.READ)
   public PagedResult getFollowings(String loginId, int index, int pageSize) {
     PageRequest pageRequest = PageRequest.of(index, pageSize);
@@ -210,6 +214,7 @@ public class CyberstarServiceImpl implements CyberstarService {
    * @return
    */
   @Override
+  @Transactional(isolation = Isolation.READ_COMMITTED)
   @Lock(LockModeType.READ)
   public PagedResult getFriends(String loginId, int index, int pageSize) {
     PageRequest pageRequest = PageRequest.of(index, pageSize);

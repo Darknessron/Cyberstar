@@ -19,3 +19,4 @@ Such as how many followings or following and friends.
 
 ### TODO
  - Unit test
+ - Improve performance

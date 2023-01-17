@@ -9,7 +9,7 @@ Such as how many followings or following and friends.
   - When two cyber stars subscribe to each other, then they will be marked as friends.
 
 ## Swagger API
-[Swagger](localhost:8080/swagger-ui/index.html#/)
+[Swagger](http://localhost:8080/swagger-ui/index.html#/)
 
 ## Technical stack
 - Spring Boot

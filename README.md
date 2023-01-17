@@ -15,3 +15,7 @@ Such as how many followings or following and friends.
 - Spring Boot
 - Spring Data JPA
 - H2 embedded database
+
+
+### TODO
+ - Unit test

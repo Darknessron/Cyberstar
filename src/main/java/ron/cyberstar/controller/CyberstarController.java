@@ -1,5 +1,7 @@
 package ron.cyberstar.controller;
 
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import javassist.NotFoundException;
 import javax.websocket.server.PathParam;
 import lombok.AllArgsConstructor;
@@ -27,55 +29,97 @@ public class CyberstarController {
 
   private final CyberstarService cyberstarService;
 
+  private final ReadWriteLock lock = new ReentrantReadWriteLock();
+
   @GetMapping(value = "/{loginId}/info", produces = MediaType.APPLICATION_JSON_VALUE)
   public ResponseEntity<CyberStarDto> getCyberstar(@PathVariable("loginId") String loginId) {
     log.debug("invoke getCyberstar, loginId: {}", loginId);
-    CyberStarDto result = cyberstarService.getInfo(loginId);
-    if (result ==  null) return ResponseEntity.notFound().build();
+    CyberStarDto result;
+    lock.readLock().lock();
+    try {
+      result = cyberstarService.getInfo(loginId);
+    } finally {
+      lock.readLock().unlock();
+    }
+    if (result == null) {
+      return ResponseEntity.notFound().build();
+    }
     return ResponseEntity.ok(result);
   }
+
   @PostMapping(value = "/{loginId}/subscribe")
-  public ResponseEntity<Object> subscribe(@PathVariable("loginId") String loginId, @RequestParam("currentUserId") long currentUserId)  {
+  public ResponseEntity<Object> subscribe(@PathVariable("loginId") String loginId,
+      @RequestParam("currentUserId") long currentUserId) {
     log.debug("invoke subscribe, following loginId:{}, follower id:{}", loginId, currentUserId);
+    lock.writeLock().lock();
+    log.debug("Controller Thread name: {}", Thread.currentThread().getName());
     try {
       cyberstarService.subscribe(currentUserId, loginId);
     } catch (NotFoundException e) {
       return ResponseEntity.notFound().build();
     } catch (DuplicateKeyException e) {
       return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+    } finally {
+      lock.writeLock().unlock();
     }
     return ResponseEntity.ok(true);
   }
 
   @DeleteMapping(value = "/{loginId}/unsubscribe")
-  public ResponseEntity<Boolean> unsubscribe(@PathVariable("loginId") String loginId, @RequestParam("currentUserId") long currentUserId)  {
+  public ResponseEntity<Boolean> unsubscribe(@PathVariable("loginId") String loginId,
+      @RequestParam("currentUserId") long currentUserId) {
     log.debug("invoke unsubscribe, following loginId:{}, follower id:{}", loginId, currentUserId);
+    lock.writeLock().lock();
     try {
       cyberstarService.unsubscribe(currentUserId, loginId);
     } catch (NotFoundException e) {
       return ResponseEntity.notFound().build();
+    } finally {
+      lock.writeLock().unlock();
     }
     return ResponseEntity.ok(true);
   }
 
   @GetMapping(value = "/{loginId}/follower", produces = MediaType.APPLICATION_JSON_VALUE)
-  public ResponseEntity<PagedResult> getFollower(@PathVariable("loginId") String loginId, @PathParam("index") int index, @PathParam("pageSize") int pageSize) {
+  public ResponseEntity<PagedResult> getFollower(@PathVariable("loginId") String loginId,
+      @PathParam("index") int index, @PathParam("pageSize") int pageSize) {
     log.debug("invoke getFollower, loginId:{}, index:{}, pageSize:{}", loginId, index, pageSize);
-    PagedResult result = cyberstarService.getFollowers(loginId, index, pageSize);
+    lock.readLock().lock();
+    PagedResult result;
+    try {
+      result = cyberstarService.getFollowers(loginId, index, pageSize);
+    } finally {
+      lock.readLock().unlock();
+    }
     return ResponseEntity.ok(result);
   }
 
   @GetMapping(value = "/{loginId}/following", produces = MediaType.APPLICATION_JSON_VALUE)
-  public ResponseEntity<PagedResult> getFollowing(@PathVariable("loginId") String loginId, @PathParam("index") int index, @PathParam("pageSize") int pageSize) {
+  public ResponseEntity<PagedResult> getFollowing(@PathVariable("loginId") String loginId,
+      @PathParam("index") int index, @PathParam("pageSize") int pageSize) {
     log.debug("invoke getFollowing, loginId:{}, index:{}, pageSize:{}", loginId, index, pageSize);
-    PagedResult result = cyberstarService.getFollowings(loginId, index, pageSize);
+    lock.readLock().lock();
+    PagedResult result;
+    try {
+      result = cyberstarService.getFollowings(loginId, index, pageSize);
+    } finally {
+      lock.readLock().unlock();
+    }
     return ResponseEntity.ok(result);
   }
 
   @GetMapping(value = "/{loginId}/friend", produces = MediaType.APPLICATION_JSON_VALUE)
-  public ResponseEntity<PagedResult> getFriends(@PathVariable("loginId") String loginId, @PathParam("index") int index, @PathParam("pageSize") int pageSize) {
+  public ResponseEntity<PagedResult> getFriends(@PathVariable("loginId") String loginId,
+      @PathParam("index") int index, @PathParam("pageSize") int pageSize) {
     log.debug("invoke getFriends, loginId:{}, index:{}, pageSize:{}", loginId, index, pageSize);
-    PagedResult result = cyberstarService.getFriends(loginId, index, pageSize);
+    lock.readLock().lock();
+    PagedResult result;
+    try {
+      result = cyberstarService.getFriends(loginId, index, pageSize);
+    } finally {
+      lock.readLock().unlock();
+    }
+
     return ResponseEntity.ok(result);
   }
 }

@@ -5,10 +5,15 @@ spring:
   datasource:
     url: jdbc:h2:mem:cyberstar;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false
   jpa:
-    show-sql: true
+    show-sql: false
     hibernate:
       ddl-auto: none
     defer-datasource-initialization: true
   sql:
     init:
       mode: always
+
+
+logging:
+  level:
+    ron: info

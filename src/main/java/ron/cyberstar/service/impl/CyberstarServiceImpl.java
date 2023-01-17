@@ -1,14 +1,10 @@
 package ron.cyberstar.service.impl;
 
 import java.util.Optional;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 import javassist.NotFoundException;
 import javax.persistence.LockModeType;
 import javax.transaction.Transactional;
-import javax.transaction.Transactional.TxType;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -32,8 +28,6 @@ public class CyberstarServiceImpl implements CyberstarService {
 
   private final CyberstarRepository cyberstarRepository;
   private final RelationshipRepository relationshipRepository;
-
-  private final ReentrantLock lock = new ReentrantLock();
 
   /**
    * @param loginId
@@ -62,59 +56,59 @@ public class CyberstarServiceImpl implements CyberstarService {
    * @return
    */
   @Override
-  @Transactional(TxType.REQUIRED)
+  @Transactional
   @Lock(LockModeType.OPTIMISTIC_FORCE_INCREMENT)
   public void subscribe(long currenUserId, String loginId)
       throws NotFoundException, DuplicateKeyException {
 
     boolean isFriend = false;
 
-    lock.lock();
+    log.debug("Thread {} start", Thread.currentThread().getName());
+
+    Optional<Cyberstar> starOpt = cyberstarRepository.findByLoginId(loginId);
+    if (starOpt.isEmpty()) {
+      log.error("subscribe target not found, subscribe login id:{}", loginId);
+      throw new NotFoundException("subscribe target not found");
+    }
+    Optional<Cyberstar> currentUserOpt = cyberstarRepository.findById(currenUserId);
+    if (currentUserOpt.isEmpty()) {
+      log.error("current user not found, current user id:{}", currenUserId);
+      throw new NotFoundException("current user not found");
+    }
+    Cyberstar star = starOpt.get();
+    Cyberstar currentUser = currentUserOpt.get();
+
+    int f = relationshipRepository.isFriend(currenUserId, star.getId());
+    isFriend = f > 0;
+
+    Relationship currentUserRel = currentUser.getRelationship();
+    Relationship followingRel = star.getRelationship();
+
+    relationshipRepository.addFollowing(currenUserId, star.getId());
+
+    currentUserRel.setFollowingCount(currentUserRel.getFollowingCount() + 1);
+    followingRel.setFollowerCount(followingRel.getFollowerCount() + 1);
+
+    if (isFriend) {
+      currentUserRel.setFriendCount(currentUserRel.getFriendCount() + 1);
+      followingRel.setFriendCount(followingRel.getFriendCount() + 1);
+    }
     try {
-      Optional<Cyberstar> starOpt = cyberstarRepository.findByLoginId(loginId);
-      if (starOpt.isEmpty()) {
-        log.error("subscribe target not found, subscribe login id:{}", loginId);
-        throw new NotFoundException("subscribe target not found");
-      }
-      Optional<Cyberstar> currentUserOpt = cyberstarRepository.findById(currenUserId);
-      if (currentUserOpt.isEmpty()) {
-        log.error("current user not found, current user id:{}", currenUserId);
-        throw new NotFoundException("current user not found");
-      }
-      Cyberstar star = starOpt.get();
-      Cyberstar currentUser = currentUserOpt.get();
-
-      int f = relationshipRepository.isFriend(currenUserId, star.getId());
-      isFriend = f > 0;
-
-
-      Relationship currentUserRel = currentUser.getRelationship();
-      Relationship followingRel = star.getRelationship();
-
-
-      relationshipRepository.addFollowing(currenUserId, star.getId());
-
-      currentUserRel.setFollowingCount(currentUserRel.getFollowingCount() + 1);
-      followingRel.setFollowerCount(followingRel.getFollowerCount() + 1);
-
-      if (isFriend) {
-        currentUserRel.setFriendCount(currentUserRel.getFriendCount()+1);
-        followingRel.setFriendCount(followingRel.getFriendCount()+1);
-      }
       relationshipRepository.save(currentUserRel);
       relationshipRepository.save(followingRel);
 
     } catch (DataIntegrityViolationException ex) {
-      /*
-      log.error("Duplicate subscription, follower id: {} following id: {}", currenUserId, star.getId());
+
+      log.error("Duplicate subscription, follower id: {} following id: {}", currenUserId,
+          star.getId());
       throw new DuplicateKeyException(
           String.format("Duplicate subscription, follower id: %1s  following id: %2s ",
               currenUserId, star.getId()));
 
-       */
-    } finally {
-      lock.unlock();
+
     }
+    log.debug("Thread {} end", Thread.currentThread().getName());
+
   }
 
   /**
@@ -123,8 +117,8 @@ public class CyberstarServiceImpl implements CyberstarService {
    * @return
    */
   @Override
-  @Transactional(TxType.REQUIRED)
-  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Transactional
+  @Lock(LockModeType.OPTIMISTIC_FORCE_INCREMENT)
   public void unsubscribe(long currenUserId, String loginId) throws NotFoundException {
     Optional<Cyberstar> starOpt;
     Optional<Cyberstar> currentUserOpt;
@@ -133,43 +127,38 @@ public class CyberstarServiceImpl implements CyberstarService {
 
     boolean isFriend = false;
 
-    lock.lock();
-    try {
-      starOpt = cyberstarRepository.findByLoginId(loginId);
-      if (starOpt.isEmpty()) {
-        log.error("subscribe target not found, subscribe login id:{}", loginId);
-        throw new NotFoundException("subscribe target not found");
-      }
-      currentUserOpt = cyberstarRepository.findById(currenUserId);
-      if (currentUserOpt.isEmpty()) {
-        log.error("current user not found, current user id:{}", currenUserId);
-        throw new NotFoundException("current user not found");
-      }
-      star = starOpt.get();
-      currentUser = currentUserOpt.get();
-
-      int f = relationshipRepository.isFriend(currenUserId, star.getId());
-      isFriend = f > 0;
-
-
-      relationshipRepository.removeFollowing(currenUserId, star.getId());
-
-      Relationship followingRel = star.getRelationship();
-      Relationship currentUserRel = currentUser.getRelationship();
-
-      followingRel.setFollowerCount(followingRel.getFollowerCount() - 1);
-      currentUserRel.setFollowingCount(currentUserRel.getFollowingCount() - 1);
-
-      if (isFriend) {
-        followingRel.setFriendCount(followingRel.getFriendCount() - 1);
-        currentUserRel.setFriendCount(currentUserRel.getFriendCount() - 1);
-      }
-
-      relationshipRepository.save(currentUserRel);
-      relationshipRepository.save(followingRel);
-    } finally {
-      lock.unlock();
+    starOpt = cyberstarRepository.findByLoginId(loginId);
+    if (starOpt.isEmpty()) {
+      log.error("subscribe target not found, subscribe login id:{}", loginId);
+      throw new NotFoundException("subscribe target not found");
     }
+    currentUserOpt = cyberstarRepository.findById(currenUserId);
+    if (currentUserOpt.isEmpty()) {
+      log.error("current user not found, current user id:{}", currenUserId);
+      throw new NotFoundException("current user not found");
+    }
+    star = starOpt.get();
+    currentUser = currentUserOpt.get();
+
+    int f = relationshipRepository.isFriend(currenUserId, star.getId());
+    isFriend = f > 0;
+
+    relationshipRepository.removeFollowing(currenUserId, star.getId());
+
+    Relationship followingRel = star.getRelationship();
+    Relationship currentUserRel = currentUser.getRelationship();
+
+    followingRel.setFollowerCount(followingRel.getFollowerCount() - 1);
+    currentUserRel.setFollowingCount(currentUserRel.getFollowingCount() - 1);
+
+    if (isFriend) {
+      followingRel.setFriendCount(followingRel.getFriendCount() - 1);
+      currentUserRel.setFriendCount(currentUserRel.getFriendCount() - 1);
+    }
+
+    relationshipRepository.save(currentUserRel);
+    relationshipRepository.save(followingRel);
+
   }
 
   /**
@@ -179,21 +168,17 @@ public class CyberstarServiceImpl implements CyberstarService {
    * @return
    */
   @Override
-  @Lock(LockModeType.PESSIMISTIC_READ)
+  @Lock(LockModeType.READ)
   public PagedResult getFollowers(String loginId, int index, int pageSize) {
     PageRequest pageRequest = PageRequest.of(index, pageSize);
     Page<Cyberstar> stars;
     PagedResult result;
 
-    lock.lock();
-    try {
-      stars = cyberstarRepository.findFollowersByLoginId(loginId, pageRequest);
-      result = PagedResult.builder().index(index).pageSize(pageSize).total(
+    stars = cyberstarRepository.findFollowersByLoginId(loginId, pageRequest);
+    result = PagedResult.builder().index(index).pageSize(pageSize).total(
             stars.getTotalElements())
         .name(stars.stream().map(c -> c.getName()).collect(Collectors.toList())).build();
-    } finally {
-      lock.unlock();
-    }
+
     return result;
   }
 
@@ -204,21 +189,17 @@ public class CyberstarServiceImpl implements CyberstarService {
    * @return
    */
   @Override
-  @Lock(LockModeType.PESSIMISTIC_READ)
+  @Lock(LockModeType.READ)
   public PagedResult getFollowings(String loginId, int index, int pageSize) {
     PageRequest pageRequest = PageRequest.of(index, pageSize);
     Page<Cyberstar> stars;
     PagedResult result;
 
-    lock.lock();
-    try {
-      stars = cyberstarRepository.findFollowingsByLoginId(loginId, pageRequest);
-      result = PagedResult.builder().index(index).pageSize(pageSize).total(
+    stars = cyberstarRepository.findFollowingsByLoginId(loginId, pageRequest);
+    result = PagedResult.builder().index(index).pageSize(pageSize).total(
             stars.getTotalElements())
         .name(stars.stream().map(c -> c.getName()).collect(Collectors.toList())).build();
-    } finally {
-      lock.unlock();
-    }
+
     return result;
   }
 
@@ -229,21 +210,17 @@ public class CyberstarServiceImpl implements CyberstarService {
    * @return
    */
   @Override
-  @Lock(LockModeType.PESSIMISTIC_READ)
+  @Lock(LockModeType.READ)
   public PagedResult getFriends(String loginId, int index, int pageSize) {
     PageRequest pageRequest = PageRequest.of(index, pageSize);
     Page<Cyberstar> stars;
     PagedResult result;
 
-    lock.lock();
-    try {
-      stars = cyberstarRepository.findFriendsByLoginId(loginId, pageRequest);
-      result = PagedResult.builder().index(index).pageSize(pageSize).total(
-              stars.getTotalElements())
-          .name(stars.stream().map(c -> c.getName()).collect(Collectors.toList())).build();
-    } finally {
-      lock.unlock();
-    }
+    stars = cyberstarRepository.findFriendsByLoginId(loginId, pageRequest);
+    result = PagedResult.builder().index(index).pageSize(pageSize).total(
+            stars.getTotalElements())
+        .name(stars.stream().map(c -> c.getName()).collect(Collectors.toList())).build();
+
     return result;
   }
 

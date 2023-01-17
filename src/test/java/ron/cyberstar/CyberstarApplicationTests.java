@@ -44,6 +44,13 @@ class CyberstarApplicationTests {
             "http://localhost:8080/cyberstar/Ron099/info"))
         .GET().build();
     HttpResponse<String> response = client.send(request, BodyHandlers.ofString());
+    /*
+    boolean isTermibated = executor.isTerminated();
+    while (!isTermibated) {
+
+    }
+
+     */
   }
 
 }
